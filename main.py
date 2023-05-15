@@ -11,7 +11,7 @@ from obswebsocket import obsws, requests  # noqa: E402
 
 root = Tk()
 root.title("StreamManager")
-root.geometry("650x200")
+root.geometry("650x325")
 root.resizable(False, False)
 
 root.title("Stream Manager")
@@ -28,6 +28,32 @@ ws = obsws(host, port, password)
 
 cwd = os.getcwd()
 
+def createTextMemory():
+    f = open("memory.txt", "w")
+    f.write(pathEntry.get() + "\n")
+    rtmplist = RTMPentry.get()
+    rtmplist = rtmplist.split()
+    newRTMPList = []
+    for i in range(len(rtmplist)):
+        currentRTMP = rtmplist[i]
+        currentRTMP = "[f=flv]" + currentRTMP + "|"
+        newRTMPList.append(currentRTMP)
+    finalRTMPlist = "".join(newRTMPList)
+    finalRTMPlist = finalRTMPlist[:-1]
+    finalRTMPString = 'ffmpeg -i rtmp://localhost:1935/live/stream -c:v copy -c:a copy -map 0 -f tee "' + finalRTMPlist + '"'
+    f.write(finalRTMPString)
+    f.close()
+
+
+def readFromTextMemory(dataType):
+    f = open("memory.txt", "r")
+    MemoryData = f.readlines()
+    if dataType == "OBS":
+        return MemoryData[0]
+    if dataType == "RTMP":
+        return MemoryData[1]
+    f.close()
+
 
 def runMonaserver():
     f = open("StartMonaserver.bat", "w")
@@ -37,7 +63,8 @@ def runMonaserver():
 
 
 def runObs():
-    path = pathEntry.get()
+    path = readFromTextMemory("OBS")
+    print(path)
     f = open("StartObs.bat", "w")
     f.write(path[0].lower() + ": \n" + "cd " + path + "\n" + "obs64.exe")
     f.close()
@@ -53,17 +80,7 @@ def beginStream():
 
 
 def runRestream():
-    rtmplist = RTMPentry.get()
-    rtmplist = rtmplist.split()
-    newRTMPList = []
-    for i in range(len(rtmplist)):
-        currentRTMP = rtmplist[i]
-        currentRTMP = "[f=flv]" + currentRTMP + "|"
-        newRTMPList.append(currentRTMP)
-    finalRTMPlist = "".join(newRTMPList)
-    finalRTMPlist = finalRTMPlist[:-1]
-    finalRTMPString = 'ffmpeg -i rtmp://localhost:1935/live/stream -c:v copy -c:a copy -map 0 -f tee "' + finalRTMPlist + '"'
-
+    finalRTMPString = readFromTextMemory("RTMP")
     f = open("StartFfmpeg.bat", "w")
     f.write(cwd[0].lower() + ": \n" + "cd " + cwd + "\n" + finalRTMPString)
     f.close()
@@ -100,5 +117,6 @@ RTMPentry.pack(fill="x", expand=True)
 
 ttk.Button(mainBorder, text="StartStream", command=lambda: mainSequence()).pack(pady=5, fill="x")
 ttk.Button(mainBorder, text="EndStream", command=lambda: endAll()).pack(pady=5, fill="x")
+ttk.Button(mainBorder, text="UpdateMemory", command=lambda: createTextMemory()).pack(pady=5, fill="x")
 
 root.mainloop()
